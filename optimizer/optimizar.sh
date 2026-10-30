@@ -19,14 +19,14 @@ ANIM=$DIR/animaciones.txt
 # Solo apps que la TV no necesita para funcionar. Nunca se tocan: Play Store, Google Play
 # Services, ajustes, teclado, Wi-Fi/Bluetooth, sintonizador/HDMI ni la pantalla de inicio actual.
 CATALOGO='tv.anoki.acr.controller|rastreo|1|Rastreador ACR: reconoce lo que ves para mostrarte publicidad
-com.google.android.feedback|rastreo|1|Envia reportes de errores a Google
-fusion.android.tv.demo|sistema|1|Modo demostracion de tienda
+com.google.android.feedback|rastreo|1|Envía reportes de errores a Google
+fusion.android.tv.demo|sistema|1|Modo demostración de tienda
 com.android.printspooler|sistema|1|Servicio de impresoras (una TV no imprime)
 com.google.android.play.games|sistema|1|Google Play Juegos
-com.android.dreams.basic|sistema|1|Protector de pantalla basico
+com.android.dreams.basic|sistema|1|Protector de pantalla básico
 com.amazon.amazonvideo.livingroom|preinstalada|0|Prime Video
 com.google.android.youtube.tvmusic|preinstalada|0|YouTube Music
-com.google.android.videos|preinstalada|0|Google Play Peliculas
+com.google.android.videos|preinstalada|0|Google Play Películas
 com.cltv.fast|preinstalada|0|Canales gratis con publicidad
 com.google.android.marvin.talkback|accesibilidad|0|Lector de pantalla TalkBack (no la quites si alguien en casa lo usa)'
 
