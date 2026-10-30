@@ -358,7 +358,10 @@
   // ---------- emparejar ----------
   $('showCode').onclick = () => {
     $('pairErr').textContent = '';
-    fetch('/pair/start').then(() => { $('code').focus(); }).catch(() => { $('pairErr').textContent = 'No encontré la TV. ¿Está prendida y en el mismo Wi-Fi?'; });
+    fetch('/pair/start').then(r => {
+      if (r.status === 429) $('pairErr').textContent = 'Demasiados intentos fallidos. Espera unos minutos y vuelve a intentar.';
+      else $('code').focus();
+    }).catch(() => { $('pairErr').textContent = 'No encontré la TV. ¿Está prendida y en el mismo Wi-Fi?'; });
   };
   $('doPair').onclick = () => {
     const code = $('code').value.trim();

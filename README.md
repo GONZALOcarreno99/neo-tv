@@ -109,6 +109,19 @@ android\NeoLauncher\build.ps1
 
 La primera vez se crea `debug.keystore` para firmar. Es tuyo: no lo subas.
 
+## Seguridad
+
+La depuración por red le da control total de la TV a cualquier equipo que **tú** autorices. Por eso:
+
+- **Acepta el aviso «Permitir depuración» solo cuando lo pediste tú.** Si aparece de la nada, alguien en tu Wi-Fi está intentando entrar: toca **Cancelar**.
+- Úsalo solo en el Wi-Fi de tu casa, con contraseña (WPA2 o WPA3). No en redes públicas ni compartidas.
+- Para quitar todos los permisos dados: **Opciones de desarrollador › Revocar autorizaciones de depuración**. Si ya no lo usas, apaga **Depuración por red**.
+- El control web de NEO funciona por HTTP en tu red local (sin cifrar). Para entrar pide un código de 6 cifras que solo aparece en la pantalla de la TV; tras 5 intentos fallidos se bloquea, cada vez por más tiempo. Para desemparejar todos los celulares: Opciones de NEO › **Olvidar celulares**.
+- El optimizador solo toca apps de su lista, guarda su registro en una carpeta donde las apps de la TV no pueden escribir y al deshacer revisa cada línea antes de usarla.
+- Comprueba que el APK que bajas es el publicado: cada Release trae su SHA-256.
+
+¿Encontraste un problema de seguridad? Abre un issue sin detalles de cómo explotarlo y te contacto.
+
 ## Aviso
 
 Lo probé en mi TV (JVC con Android TV 11, chip MediaTek). Debería funcionar en la mayoría de Android TV y Google TV, pero cada marca cambia cosas. Úsalo bajo tu responsabilidad y, si algo se ve raro, usa **Deshacer todo**.

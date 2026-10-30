@@ -86,6 +86,8 @@ public class WebRemoteService extends Service {
     private String pairCode;
     private long pairUntil;
     private int pairFails;
+    private int pairBurns;
+    private long pairLockUntil;
     private volatile NetWatch net;
     private android.view.View codeView;
 
@@ -183,7 +185,10 @@ public class WebRemoteService extends Service {
                 case "/": asset(out, "web_index.html", "text/html; charset=utf-8"); break;
                 case "/manifest.json": asset(out, "web_manifest.json", "application/manifest+json"); break;
                 case "/icon.png": asset(out, "web_icon.png", "image/png"); break;
-                case "/pair/start": startPairing(); reply(out, 200, "application/json", "{\"ok\":true}".getBytes()); break;
+                case "/pair/start":
+                    if (startPairing()) reply(out, 200, "application/json", "{\"ok\":true}".getBytes());
+                    else reply(out, 429, "application/json", "{\"error\":\"demasiados intentos, espera unos minutos\"}".getBytes(StandardCharsets.UTF_8));
+                    break;
                 case "/pair": pair(out, args.get("code")); break;
                 case "/api":
                     if (!validToken(args.get("t"))) { reply(out, 403, "text/plain; charset=utf-8", "NEO no reconoce este atajo. Vuelve a copiar el enlace desde NEO Remote.".getBytes(StandardCharsets.UTF_8)); break; }
@@ -292,11 +297,14 @@ public class WebRemoteService extends Service {
 
     /**
      * Muestra en la TV un código de 6 números por un minuto. Si ya hay uno vigente se vuelve a
-     * mostrar el mismo: pedir códigos nuevos sin parar no sirve para adivinarlo.
+     * mostrar el mismo. Cada código anulado por intentos fallidos bloquea pedir otro un rato
+     * (1 min, 2, 4… hasta 1 h): así no se puede adivinar pidiendo códigos nuevos sin parar.
+     * Devuelve false mientras dure el bloqueo.
      */
-    private void startPairing() {
+    private boolean startPairing() {
         final String code;
         synchronized (this) {
+            if (System.currentTimeMillis() < pairLockUntil) return false;
             if (pairCode == null || System.currentTimeMillis() >= pairUntil) {
                 pairCode = String.format(java.util.Locale.US, "%06d", random.nextInt(1000000));
                 pairUntil = System.currentTimeMillis() + 60000;
@@ -307,6 +315,7 @@ public class WebRemoteService extends Service {
         ui.post(() -> showCode(code));
         ui.removeCallbacks(hideCode);
         ui.postDelayed(hideCode, Math.max(1000, pairUntil - System.currentTimeMillis()));
+        return true;
     }
 
     private void pair(OutputStream out, String code) throws IOException {
@@ -317,9 +326,13 @@ public class WebRemoteService extends Service {
                 if (pairCode.equals(code)) {
                     token = newToken();
                     pairCode = null;
+                    pairBurns = 0;
                 } else if (++pairFails >= MAX_PAIR_FAILS) {
-                    // 5 intentos fallidos: el código deja de servir y hay que pedir otro
-                    android.util.Log.w("NeoWeb", "código anulado tras " + pairFails + " intentos fallidos");
+                    // 5 intentos fallidos: el código deja de servir y no se puede pedir otro por un rato
+                    pairBurns++;
+                    long wait = Math.min(3600000L, 60000L << Math.min(6, pairBurns - 1));
+                    pairLockUntil = System.currentTimeMillis() + wait;
+                    android.util.Log.w("NeoWeb", "código anulado tras " + pairFails + " intentos fallidos; bloqueo " + wait / 1000 + " s");
                     pairCode = null;
                     burned = true;
                 }

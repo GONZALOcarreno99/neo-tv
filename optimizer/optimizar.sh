@@ -11,7 +11,9 @@
 #   sh optimizar.sh revertir           deja todo como estaba antes de "aplicar"
 #   sh optimizar.sh estado             qué hizo este script en esta TV
 
-DIR=/sdcard/neo-optimizar
+# /data/local/tmp es del usuario shell: las apps de la TV no pueden escribir ahí
+DIR=/data/local/tmp/neo-optimizar
+umask 077
 REG=$DIR/registro.txt
 ANIM=$DIR/animaciones.txt
 
@@ -97,7 +99,7 @@ cache() {
 }
 
 aplicar() {
-    mkdir -p "$DIR"
+    mkdir -p "$DIR" && chmod 700 "$DIR"
     if [ $# -eq 0 ]; then
         set -- $(echo "$CATALOGO" | awk -F'|' '$3==1 {print $1}')
     fi
@@ -109,7 +111,8 @@ aplicar() {
 revertir() {
     if [ -f "$REG" ]; then
         while IFS='|' read -r pkg metodo; do
-            [ -z "$pkg" ] && continue
+            # solo lo que este script pudo haber desactivado
+            en_catalogo "$pkg" </dev/null || continue
             if [ "$metodo" = uninstall ]; then cmd package install-existing "$pkg" </dev/null >/dev/null 2>&1
             else pm enable --user 0 "$pkg" </dev/null >/dev/null 2>&1
             fi
@@ -118,7 +121,11 @@ revertir() {
         rm -f "$REG"
     fi
     if [ -f "$ANIM" ]; then
-        while IFS='=' read -r k v; do settings put global "$k" "$v" </dev/null; done < "$ANIM"
+        while IFS='=' read -r k v; do
+            case $k in window_animation_scale|transition_animation_scale|animator_duration_scale) ;; *) continue ;; esac
+            case $v in ''|*[!0-9.]*) continue ;; esac
+            settings put global "$k" "$v" </dev/null
+        done < "$ANIM"
         rm -f "$ANIM"
         echo "ANIM|restauradas"
     fi

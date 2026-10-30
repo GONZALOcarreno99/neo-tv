@@ -524,7 +524,8 @@ public class RemoteActivity extends Activity {
         }
         final List<TvApp> list = parseApps(tsv);
         for (TvApp a : list) {
-            if (a.file == null) continue;
+            // el nombre va a la consola de la TV: solo letras, números, punto, guion y guion bajo
+            if (a.file == null || !a.file.matches("[A-Za-z0-9_.-]+") || a.file.startsWith(".")) continue;
             File f = new File(getCacheDir(), a.file);
             if (!f.exists()) {
                 String b64 = adb.exec("base64 " + EXPORT + "/banners/" + a.file + " 2>/dev/null", 8000);
@@ -1335,6 +1336,10 @@ public class RemoteActivity extends Activity {
         b.setNegativeButton("Cancelar", null).show();
     }
 
+    private static String apps(int n) {
+        return n == 1 ? "1 app" : n + " apps";
+    }
+
     private void confirmRevert() {
         new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
                 .setTitle("¿Deshacer la optimización?")
@@ -1355,14 +1360,15 @@ public class RemoteActivity extends Activity {
                     String[] p = l.split("\\|");
                     if (p[0].equals("OK")) ok++;
                     else if (p[0].equals("FALLO")) failed++;
-                    else if (p[0].equals("CACHE") && p.length > 2) cache = "caché +" + p[1] + " MB (" + p[2] + " MB libres)";
+                    else if (p[0].equals("CACHE") && p.length > 2)
+                        cache = (p[1].equals("0") ? "" : "caché +" + p[1] + " MB, ") + p[2] + " MB libres";
                 }
                 if (args.equals("revertir")) {
-                    msg = "Listo: reactivé " + ok + " apps y devolví las animaciones.";
+                    msg = "Listo: reactivé " + apps(ok) + " y devolví las animaciones.";
                 } else {
-                    msg = "Listo: " + ok + " apps desactivadas, animaciones más rápidas"
-                            + (cache != null ? ", " + cache : "") + "."
-                            + (failed > 0 ? " " + failed + " no se dejaron desactivar." : "");
+                    msg = "Listo: " + (ok > 0 ? apps(ok) + " desactivada" + (ok == 1 ? "" : "s") + ", " : "")
+                            + "animaciones más rápidas" + (cache != null ? ", " + cache : "") + "."
+                            + (failed > 0 ? " " + apps(failed) + " no se dejó desactivar." : "");
                 }
             } catch (Exception e) {
                 android.util.Log.w("NeoRemote", "optimizar", e);
