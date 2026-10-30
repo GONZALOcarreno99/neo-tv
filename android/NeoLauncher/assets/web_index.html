@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NEO Remote">
+<meta name="theme-color" content="#0B0E15">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="manifest" href="/manifest.json">
+<title>NEO Remote</title>
+<style>
+  :root {
+    --bg1: #0B0E15; --bg2: #04060A; --card: #131720; --btn1: #262B36; --btn2: #171A21;
+    --accent: #22D3EE; --white: #fff; --dim: rgba(255,255,255,.6); --faint: rgba(255,255,255,.35);
+    --red: #FF5A5F; --green: #34D399; --amber: #FBBF24; --line: rgba(255,255,255,.08);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: linear-gradient(180deg, var(--bg1), var(--bg2)); background-color: var(--bg1);
+    color: var(--white); font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+    -webkit-user-select: none; user-select: none; overflow: hidden; overscroll-behavior: none;
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+  svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px 10px; }
+  .brand { flex: 1; min-width: 0; }
+  .brand h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: .2px; }
+  .status { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--dim); margin-top: 2px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; transition: background .3s; }
+  .power { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center;
+    background: linear-gradient(180deg, #3a1d22, #22121a); color: var(--red); box-shadow: inset 0 0 0 1px rgba(255,90,95,.25); }
+  .power.on { background: linear-gradient(180deg, #13332a, #0d2019); color: var(--green); box-shadow: inset 0 0 0 1px rgba(52,211,153,.3); }
+
+  .tabs { display: flex; margin: 4px 20px 12px; padding: 4px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+  .tabs button { flex: 1; height: 36px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--dim); transition: background .2s, color .2s; position: relative; }
+  .tabs .badge { position: absolute; top: 6px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); display: none; }
+  .tabs .badge.on { display: block; }
+  .tabs button.sel { background: var(--btn1); color: var(--white); }
+
+  main { flex: 1; min-height: 0; position: relative; }
+  .panel { position: absolute; inset: 0; display: none; padding: 0 20px; }
+  .panel.sel { display: flex; flex-direction: column; }
+
+  /* control */
+  #control { align-items: center; justify-content: space-evenly; gap: 10px; }
+  .dpad { position: relative; width: min(74vw, 300px); aspect-ratio: 1; border-radius: 50%;
+    background: radial-gradient(circle at 50% 35%, #1f2430, #12151c); box-shadow: inset 0 0 0 1px var(--line), 0 18px 40px rgba(0,0,0,.45); touch-action: none; }
+  .dpad .arrow { position: absolute; display: grid; place-items: center; color: var(--dim); width: 33%; height: 33%; border-radius: 50%; }
+  .dpad .arrow.press { color: var(--accent); background: rgba(34,211,238,.10); }
+  .dpad .up { top: 2%; left: 33.5%; } .dpad .down { bottom: 2%; left: 33.5%; }
+  .dpad .left { left: 2%; top: 33.5%; } .dpad .right { right: 2%; top: 33.5%; }
+  .dpad .ok { position: absolute; inset: 31%; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 17px;
+    background: linear-gradient(180deg, #2c3240, #1a1e27); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 6px 16px rgba(0,0,0,.4); transition: transform .1s; }
+  .dpad .ok.press { transform: scale(.94); color: var(--accent); }
+  .row { display: flex; gap: 14px; justify-content: center; width: 100%; max-width: 360px; }
+  .round { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center;
+    background: linear-gradient(180deg, var(--btn1), var(--btn2)); box-shadow: inset 0 0 0 1px var(--line); transition: transform .1s, color .1s; }
+  .round.press, .chip.press, .vol button.press { transform: scale(.93); color: var(--accent); }
+  .chip { flex: 1; height: 46px; border-radius: 23px; font-size: 15px; font-weight: 600; color: var(--dim);
+    background: linear-gradient(180deg, var(--btn1), var(--btn2)); box-shadow: inset 0 0 0 1px var(--line); transition: transform .1s; }
+  .vol { display: flex; align-items: center; border-radius: 31px; background: linear-gradient(180deg, var(--btn1), var(--btn2)); box-shadow: inset 0 0 0 1px var(--line); }
+  .vol button { width: 62px; height: 62px; display: grid; place-items: center; transition: transform .1s; }
+  .vol span { font-size: 12px; color: var(--faint); font-weight: 600; letter-spacing: 1px; }
+  .lbl { font-size: 11px; color: var(--faint); text-align: center; margin-top: 5px; }
+
+  /* puntero */
+  #pointer { padding-bottom: 12px; }
+  .pad { flex: 1; border-radius: 26px; position: relative; overflow: hidden; touch-action: none;
+    background: linear-gradient(180deg, #1D2331, #10131A); box-shadow: inset 0 0 0 1px rgba(255,255,255,.13);
+    background-image: radial-gradient(rgba(255,255,255,.08) 1.2px, transparent 1.4px), linear-gradient(180deg, #1D2331, #10131A);
+    background-size: 22px 22px, 100% 100%; }
+  .pad .hint { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 8px; color: rgba(255,255,255,.4); font-size: 14px; pointer-events: none; transition: opacity .2s; }
+  .pad .glow { position: absolute; width: 180px; height: 180px; margin: -90px 0 0 -90px; border-radius: 50%; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle, rgba(34,211,238,.33), transparent 70%); transition: opacity .15s; }
+  .pad.touch .hint { opacity: 0; } .pad.touch .glow { opacity: 1; }
+
+  /* apps */
+  #apps { overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .app { text-align: left; }
+  .app img, .app .ph { width: 100%; aspect-ratio: 16/9; border-radius: 14px; display: block; object-fit: cover; background: #1C1C22; box-shadow: inset 0 0 0 1px var(--line); transition: transform .12s; }
+  .app .ph { display: grid; place-items: center; color: var(--dim); font-weight: 600; }
+  .app.press img, .app.press .ph { transform: scale(.95); }
+  .app div { font-size: 13px; color: var(--dim); margin: 7px 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .empty { color: var(--faint); text-align: center; margin-top: 40px; font-size: 14px; }
+
+  /* siri */
+  #siri { overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+  .howto { background: var(--card); border-radius: 18px; padding: 14px 16px; box-shadow: inset 0 0 0 1px var(--line); margin-bottom: 14px; }
+  .howto h3 { margin: 0 0 8px; font-size: 16px; }
+  .howto ol { margin: 0; padding-left: 20px; color: var(--dim); font-size: 14px; line-height: 1.5; }
+  .howto li { margin-bottom: 4px; }
+  .howto b { color: var(--white); font-weight: 600; }
+  .howto p { margin: 8px 0 0; color: var(--faint); font-size: 13px; line-height: 1.4; }
+  .cmd { display: flex; align-items: center; gap: 10px; padding: 12px 4px; border-bottom: 1px solid var(--line); }
+  .cmd .say { flex: 1; min-width: 0; }
+  .cmd .say div { font-weight: 600; font-size: 15px; }
+  .cmd .say span { font-size: 12px; color: var(--faint); }
+  .cmd button { height: 36px; padding: 0 14px; border-radius: 12px; font-size: 14px; font-weight: 600; background: var(--btn1); color: var(--dim); flex: none; }
+  .cmd button.copy { background: var(--accent); color: #04060A; }
+  .cmd button.done { background: var(--green); color: #04060A; }
+
+  /* red */
+  #net { overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+  .netbar { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 18px; padding: 14px 16px; box-shadow: inset 0 0 0 1px var(--line); }
+  .netbar > div { flex: 1; min-width: 0; }
+  .netbar #netSum { font-weight: 700; font-size: 16px; }
+  .netbar span { font-size: 12px; color: var(--faint); }
+  .netbar button { height: 38px; padding: 0 14px; border-radius: 12px; background: var(--accent); color: #04060A; font-weight: 700; font-size: 14px; flex: none; }
+  .netbar button:disabled { opacity: .5; }
+  .nethint { color: var(--faint); font-size: 12px; line-height: 1.4; margin: 10px 4px 4px; }
+  .nethint b { color: var(--amber); }
+  .dev { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 4px; border-bottom: 1px solid var(--line); }
+  .dev .st { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex: none; }
+  .dev.on .st { background: var(--green); }
+  .dev .info { flex: 1; min-width: 0; }
+  .dev .info div { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dev .info span { display: block; font-size: 12px; color: var(--faint); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dev .new { font-size: 10px; font-weight: 800; letter-spacing: .6px; color: #04060A; background: var(--amber); border-radius: 6px; padding: 3px 6px; flex: none; }
+  .dev:not(.on) .info div { color: var(--dim); }
+  #opt { overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+  .opt .box { width: 22px; height: 22px; border-radius: 7px; flex: none; box-shadow: inset 0 0 0 2px var(--faint); display: grid; place-items: center; }
+  .opt.on .box { background: var(--accent); box-shadow: none; }
+  .opt.on .box::after { content: ""; width: 10px; height: 5px; border: solid #04060A; border-width: 0 0 2.5px 2.5px; transform: translateY(-1px) rotate(-45deg); }
+  .opt.off { opacity: .5; }
+  .optbtns { display: flex; gap: 10px; margin-top: 14px; }
+  .optbtns button { flex: 1; height: 44px; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-weight: 600; font-size: 14px; color: var(--dim); }
+  .optbtns button:disabled { opacity: .4; }
+
+  /* escribir */
+  .type { display: flex; gap: 10px; align-items: center; margin: 10px 20px 8px; padding: 6px 6px 6px 16px; border-radius: 18px;
+    background: var(--card); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .3s; }
+  .type.wait { box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 24px rgba(34,211,238,.18); }
+  .type input { flex: 1; min-width: 0; height: 40px; border: 0; outline: 0; background: none; color: var(--white); font: inherit; font-size: 16px; }
+  .type input::placeholder { color: var(--faint); }
+  .type button { width: 44px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--btn1); color: var(--dim); }
+  .type.wait button { background: var(--accent); color: #04060A; }
+  .typehint { font-size: 12px; color: var(--accent); text-align: center; height: 0; overflow: hidden; transition: height .2s; margin: 0 20px; }
+  .typehint.show { height: 18px; }
+
+  /* emparejar */
+  #pair { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; justify-content: center; gap: 18px;
+    padding: calc(env(safe-area-inset-top) + 24px) 28px calc(env(safe-area-inset-bottom) + 24px); background: linear-gradient(180deg, var(--bg1), var(--bg2)); }
+  #pair.show { display: flex; }
+  #pair img { width: 84px; height: 84px; border-radius: 20px; align-self: center; }
+  #pair h2 { margin: 0; text-align: center; font-size: 24px; }
+  #pair p { margin: 0; text-align: center; color: var(--dim); font-size: 15px; line-height: 1.45; }
+  #pair input { height: 64px; border-radius: 16px; border: 0; outline: 0; text-align: center; font-size: 34px; letter-spacing: 14px;
+    background: var(--card); color: var(--white); box-shadow: inset 0 0 0 1px var(--line); font-family: inherit; }
+  #pair input:focus { box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .primary { height: 54px; border-radius: 16px; background: var(--accent); color: #04060A; font-weight: 700; font-size: 17px; }
+  .secondary { height: 50px; border-radius: 16px; background: var(--card); color: var(--white); font-weight: 600; box-shadow: inset 0 0 0 1px var(--line); }
+  .err { color: var(--red) !important; min-height: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>NEO Remote</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Conectando…</span></div>
+  </div>
+  <button class="power" id="power" aria-label="Encender o apagar la TV">
+    <svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>
+  </button>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button data-tab="control" class="sel">Control</button>
+  <button data-tab="pointer">Puntero</button>
+  <button data-tab="apps">Apps</button>
+  <button data-tab="net">Red<i class="badge" id="netBadge"></i></button>
+  <button data-tab="siri">Siri</button>
+  <button data-tab="opt">Limpiar</button>
+</nav>
+
+<main>
+  <section class="panel sel" id="control">
+    <div class="dpad" id="dpad">
+      <div class="arrow up" data-k="19"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></div>
+      <div class="arrow down" data-k="20"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+      <div class="arrow left" data-k="21"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></div>
+      <div class="arrow right" data-k="22"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="ok" id="ok">OK</div>
+    </div>
+
+    <div class="row">
+      <div><button class="round" data-k="4" aria-label="Atrás"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button><div class="lbl">Atrás</div></div>
+      <div><button class="round" data-k="3" aria-label="Inicio"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg></button><div class="lbl">Inicio</div></div>
+      <div><button class="round" data-k="85" aria-label="Pausa"><svg viewBox="0 0 24 24"><path d="M6 5l8 7-8 7z"/><path d="M16 5v14M20 5v14"/></svg></button><div class="lbl">Pausa</div></div>
+      <div><button class="round" data-k="164" aria-label="Silencio"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg></button><div class="lbl">Silencio</div></div>
+    </div>
+
+    <div class="row">
+      <button class="chip" data-k="89">«  10 s</button>
+      <div class="vol">
+        <button data-k="25" data-repeat aria-label="Bajar volumen"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+        <span>VOL</span>
+        <button data-k="24" data-repeat aria-label="Subir volumen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <button class="chip" data-k="90">10 s  »</button>
+    </div>
+  </section>
+
+  <section class="panel" id="pointer">
+    <div class="pad" id="pad">
+      <div class="glow" id="glow"></div>
+      <div class="hint">
+        <div>Desliza para mover el puntero</div>
+        <div>Toca: clic &nbsp;·&nbsp; Mantén: clic largo</div>
+        <div>Empuja contra el borde para seguir avanzando</div>
+        <div>Dos dedos: mover la pantalla</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="apps">
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="panel" id="net">
+    <div class="netbar">
+      <div><div id="netSum">Buscando…</div><span id="netWhen"></span></div>
+      <button id="netScan">Buscar ahora</button>
+    </div>
+    <p class="nethint">Toca un equipo para ponerle nombre. Los que tienen <b>NUEVO</b> nadie los marcó como conocidos: si no sabes qué son, cambia la clave del Wi-Fi.</p>
+    <div id="netList"></div>
+  </section>
+
+  <section class="panel" id="opt">
+    <div class="netbar">
+      <div><div id="optSum">Revisando la TV…</div><span id="optWhen"></span></div>
+      <button id="optGo">Optimizar</button>
+    </div>
+    <p class="nethint">Marca las apps que tu TV no necesita. Se desactivan (no se borran), las animaciones se aceleran y se limpia la caché. Todo se puede deshacer.</p>
+    <div id="optList"></div>
+    <div class="optbtns"><button id="optCache">Solo limpiar caché</button><button id="optUndo">Deshacer todo</button></div>
+  </section>
+
+  <section class="panel" id="siri">
+    <div class="howto">
+      <h3>Hablarle a la TV con Siri</h3>
+      <ol>
+        <li>Toca <b>Copiar</b> en la orden que quieras.</li>
+        <li>Abre la app <b>Atajos</b> → <b>+</b> → <b>Agregar acción</b> → busca <b>«Obtener contenido de URL»</b> y pega el enlace donde dice URL.</li>
+        <li>Arriba, toca el nombre del atajo y escribe la frase (por ejemplo <b>Prende la tele</b>). Toca <b>OK</b>.</li>
+        <li>Di <b>«Oye Siri, prende la tele»</b>. La primera vez, iPhone pide permiso para la red local: toca <b>Permitir</b>.</li>
+      </ol>
+      <p>Para que Siri te conteste, agrega también la acción <b>«Mostrar resultado»</b> después de la primera.</p>
+    </div>
+    <div id="siriList"></div>
+  </section>
+</main>
+
+<div class="typehint" id="typehint">La TV está esperando texto</div>
+<form class="type" id="typeBar" autocomplete="off">
+  <input id="text" type="text" placeholder="Escribir en la TV…" enterkeyhint="search" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <button type="submit" aria-label="Enviar"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+</form>
+
+<div id="pair">
+  <img src="/icon.png" alt="">
+  <h2>Conectar con la TV</h2>
+  <p>Toca el botón y escribe el código de 6 números que aparece en la pantalla de la TV.</p>
+  <button class="secondary" id="showCode">Mostrar código en la TV</button>
+  <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="······">
+  <button class="primary" id="doPair">Conectar</button>
+  <p class="err" id="pairErr"></p>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let token = null;
+  try { token = localStorage.getItem('neo_t'); } catch (e) {}
+  let ws = null, ime = false, awake = null, connected = false, retry = 300;
+  let lastMsg = 0, retryTimer = null, slowTimer = null, appsLoaded = false;
+
+  // ---------- conexión ----------
+  function setStatus(text, color) { $('statusText').textContent = text; $('dot').style.background = color; }
+  function showState() {
+    if (awake === null) setStatus('Conectada', 'var(--green)');
+    else setStatus(awake ? 'Conectada' : 'TV en reposo', awake ? 'var(--green)' : 'var(--amber)');
+  }
+
+  function connect() {
+    if (!token) { $('pair').classList.add('show'); return; }
+    clearTimeout(retryTimer);
+    if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} }
+    const sock = new WebSocket(`ws://${location.host}/ws?t=${token}`);
+    ws = sock;
+    sock.onopen = () => {
+      connected = true; retry = 300; lastMsg = Date.now();
+      clearTimeout(slowTimer);
+      showState();
+      if (!appsLoaded) loadApps();
+    };
+    sock.onmessage = e => {
+      lastMsg = Date.now();
+      try {
+        const s = JSON.parse(e.data);
+        if (s.awake === undefined) return;
+        ime = s.ime; awake = s.awake;
+        $('power').classList.toggle('on', awake);
+        showState();
+        $('typeBar').classList.toggle('wait', ime);
+        $('typehint').classList.toggle('show', ime);
+        $('netBadge').classList.toggle('on', (s.nd || 0) > 0);
+      } catch (err) {}
+    };
+    sock.onclose = () => {
+      if (ws !== sock) return;
+      const was = connected;
+      connected = false; ws = null;
+      // el aviso solo si de verdad tarda: un corte corto se rehace sin que se note
+      clearTimeout(slowTimer);
+      slowTimer = setTimeout(() => { if (!connected) setStatus('Reconectando…', 'var(--faint)'); }, 1200);
+      if (!was) {
+        // ¿se perdió el emparejamiento? (la TV responde 403)
+        fetch('/apps?t=' + token).then(r => { if (r.status === 403) forget(); }).catch(() => {});
+      }
+      retryTimer = setTimeout(connect, retry);
+      retry = Math.min(retry * 1.6, 4000);
+    };
+  }
+
+  function forget() {
+    token = null;
+    try { localStorage.removeItem('neo_t'); } catch (e) {}
+    $('pair').classList.add('show');
+  }
+
+  function send(cmd) { if (ws && ws.readyState === 1) ws.send(cmd); }
+
+  // iPhone deja conexiones "colgadas" al bloquear o cambiar de app: la TV contesta cada ping,
+  // y si no contesta en 8 s la conexión se rehace.
+  setInterval(() => {
+    if (document.hidden || !token) return;
+    if (connected && Date.now() - lastMsg > 8000) { connected = false; connect(); return; }
+    send('ping');
+  }, 4000);
+  function wake() {
+    if (document.hidden || !token) return;
+    if (!connected || Date.now() - lastMsg > 5000) { retry = 300; connect(); }
+    else send('ping');
+  }
+  document.addEventListener('visibilitychange', wake);
+  window.addEventListener('pageshow', wake);
+  window.addEventListener('focus', wake);
+
+  // ---------- emparejar ----------
+  $('showCode').onclick = () => {
+    $('pairErr').textContent = '';
+    fetch('/pair/start').then(() => { $('code').focus(); }).catch(() => { $('pairErr').textContent = 'No encontré la TV. ¿Está prendida y en el mismo Wi-Fi?'; });
+  };
+  $('doPair').onclick = () => {
+    const code = $('code').value.trim();
+    fetch('/pair?code=' + encodeURIComponent(code)).then(r => r.json()).then(j => {
+      if (!j.token) { $('pairErr').textContent = 'Código incorrecto o vencido. Pide otro.'; return; }
+      token = j.token;
+      try { localStorage.setItem('neo_t', token); } catch (e) {}
+      $('pair').classList.remove('show');
+      $('code').value = '';
+      connect();
+    }).catch(() => { $('pairErr').textContent = 'No se pudo conectar con la TV.'; });
+  };
+
+  // ---------- pestañas ----------
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('sel', x === b));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('sel', p.id === b.dataset.tab));
+    if (b.dataset.tab !== 'pointer') send('h');
+    if (b.dataset.tab === 'siri') showSiri();
+    if (b.dataset.tab === 'net') netCall('/net');
+    if (b.dataset.tab === 'opt') showOpt();
+  });
+
+  // ---------- botones ----------
+  function pressable(el, onDown, onUp) {
+    el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('press'); onDown && onDown(e); });
+    const end = () => { if (!el.classList.contains('press')) return; el.classList.remove('press'); onUp && onUp(); };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('pointerleave', end);
+  }
+
+  document.querySelectorAll('[data-k]').forEach(el => {
+    const k = el.dataset.k;
+    let t1 = null, t2 = null;
+    const repeat = el.hasAttribute('data-repeat') || el.classList.contains('arrow');
+    pressable(el, () => {
+      send('k ' + k);
+      if (repeat) t1 = setTimeout(() => { t2 = setInterval(() => send('k ' + k), 110); }, 380);
+    }, () => { clearTimeout(t1); clearInterval(t2); });
+  });
+
+  // OK: tocar = OK, mantener = opciones (OK largo)
+  (() => {
+    const ok = $('ok');
+    let timer = null, longFired = false;
+    pressable(ok, () => {
+      longFired = false;
+      timer = setTimeout(() => { longFired = true; send('l 23'); }, 600);
+    }, () => {
+      clearTimeout(timer);
+      if (!longFired) send('k 23');
+    });
+  })();
+
+  $('power').onclick = () => send('power');
+
+  // ---------- puntero ----------
+  (() => {
+    const pad = $('pad'), glow = $('glow');
+    let lastX = 0, lastY = 0, lastT = 0, downAt = 0, travel = 0, moved = false, longFired = false, two = false;
+    let twoX = 0, twoY = 0, accX = 0, accY = 0, pendX = 0, pendY = 0, queued = false, longTimer = null;
+    const SLOP = 8, STEP = 40;
+
+    function flush() {
+      queued = false;
+      if (pendX || pendY) send(`p ${pendX.toFixed(1)} ${pendY.toFixed(1)}`);
+      pendX = pendY = 0;
+    }
+    function avg(touches, key) { let s = 0; for (const t of touches) s += t[key]; return s / touches.length; }
+    function place(t) { const r = pad.getBoundingClientRect(); glow.style.left = (t.clientX - r.left) + 'px'; glow.style.top = (t.clientY - r.top) + 'px'; }
+
+    pad.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        pad.classList.add('touch'); place(t);
+        moved = longFired = two = false; travel = accX = accY = 0;
+        lastX = t.clientX; lastY = t.clientY; lastT = downAt = e.timeStamp;
+        clearTimeout(longTimer);
+        longTimer = setTimeout(() => { if (!moved && !two) { longFired = true; send('cl'); } }, 550);
+      } else {
+        two = true; clearTimeout(longTimer);
+        twoX = avg(e.touches, 'clientX'); twoY = avg(e.touches, 'clientY'); accX = accY = 0;
+      }
+    }, { passive: false });
+
+    pad.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (two && e.touches.length >= 2) {
+        // como en el celular: los dedos suben -> la pantalla de la TV baja
+        const x = avg(e.touches, 'clientX'), y = avg(e.touches, 'clientY');
+        accX += twoX - x; accY += twoY - y; twoX = x; twoY = y;
+        while (Math.abs(accY) >= STEP && Math.abs(accY) >= Math.abs(accX)) { send('k ' + (accY > 0 ? 20 : 19)); accY -= Math.sign(accY) * STEP; }
+        while (Math.abs(accX) >= STEP && Math.abs(accX) > Math.abs(accY)) { send('k ' + (accX > 0 ? 22 : 21)); accX -= Math.sign(accX) * STEP; }
+        return;
+      }
+      if (two) return;
+      const t = e.touches[0];
+      const dx = t.clientX - lastX, dy = t.clientY - lastY, dt = Math.max(1, e.timeStamp - lastT);
+      lastX = t.clientX; lastY = t.clientY; lastT = e.timeStamp;
+      place(t);
+      travel += Math.abs(dx) + Math.abs(dy);
+      if (!moved && travel > SLOP) { moved = true; clearTimeout(longTimer); }
+      if (!moved) return;
+      // aceleración: dedo lento = preciso, dedo rápido = cruza la pantalla
+      const speed = Math.hypot(dx, dy) / dt;
+      const gain = (2.0 + Math.min(4.0, speed * 2.6)) * 1.5;
+      pendX += dx * gain; pendY += dy * gain;
+      if (!queued) { queued = true; requestAnimationFrame(flush); }
+    }, { passive: false });
+
+    function end(e) {
+      e.preventDefault();
+      if (e.touches.length > 0) return;
+      clearTimeout(longTimer);
+      if (!moved && !longFired && !two && e.timeStamp - downAt < 350) send('c');
+      pad.classList.remove('touch');
+    }
+    pad.addEventListener('touchend', end, { passive: false });
+    pad.addEventListener('touchcancel', end, { passive: false });
+  })();
+
+  // ---------- Siri ----------
+  const SIRI = [
+    ['Prende la tele', 'do=on'],
+    ['Apaga la tele', 'do=off'],
+    ['Pon YouTube', 'do=open&app=youtube'],
+    ['Pon Netflix', 'do=open&app=netflix'],
+    ['Pon Disney', 'do=open&app=disney'],
+    ['Pon Spotify', 'do=open&app=spotify'],
+    ['Pausa la tele', 'do=pause'],
+    ['Sube el volumen', 'do=vol_up&n=5'],
+    ['Baja el volumen', 'do=vol_down&n=5'],
+    ['Silencia la tele', 'do=mute'],
+    ['Quién está en mi wifi', 'do=net'],
+  ];
+  let siriToken = null;
+  try { siriToken = localStorage.getItem('neo_siri'); } catch (e) {}
+
+  // Los atajos usan un token propio, así siguen funcionando aunque se empareje de nuevo este iPhone.
+  async function ensureSiriToken(renew) {
+    if (siriToken && !renew) return siriToken;
+    const j = await (await fetch('/siri/new?t=' + token)).json();
+    siriToken = j.token;
+    try { localStorage.setItem('neo_siri', siriToken); } catch (e) {}
+    return siriToken;
+  }
+  const siriUrl = q => `http://${location.host}/api?t=${siriToken}&${q}`;
+
+  // http no permite navigator.clipboard en iPhone: se copia desde un campo de texto escondido
+  function copy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.append(ta);
+    ta.focus(); ta.setSelectionRange(0, text.length);
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+    return ok;
+  }
+
+  function flash(btn, text, cls) {
+    const old = btn.textContent, oldCls = btn.className;
+    btn.textContent = text; btn.className = cls;
+    setTimeout(() => { btn.textContent = old; btn.className = oldCls; }, 1600);
+  }
+
+  async function showSiri() {
+    const list = $('siriList');
+    try { await ensureSiriToken(false); } catch (e) { list.innerHTML = '<div class="empty">No se pudo conectar con la TV.</div>'; return; }
+    list.innerHTML = '';
+    for (const [phrase, q] of SIRI) {
+      const row = document.createElement('div');
+      row.className = 'cmd';
+      const say = document.createElement('div');
+      say.className = 'say';
+      const t = document.createElement('div'); t.textContent = phrase;
+      const s = document.createElement('span'); s.textContent = '«Oye Siri, ' + phrase.toLowerCase() + '»';
+      say.append(t, s);
+      const test = document.createElement('button'); test.textContent = 'Probar';
+      test.onclick = async () => {
+        try {
+          let r = await fetch(siriUrl(q));
+          if (r.status === 403) { await ensureSiriToken(true); showSiri(); return; }
+          flash(test, (await r.text()).slice(0, 18), 'done');
+        } catch (e) { flash(test, 'Sin TV', ''); }
+      };
+      const cp = document.createElement('button'); cp.textContent = 'Copiar'; cp.className = 'copy';
+      cp.onclick = () => {
+        if (copy(siriUrl(q))) flash(cp, 'Copiado', 'done');
+        else window.prompt('Copia este enlace:', siriUrl(q));
+      };
+      row.append(say, test, cp);
+      list.append(row);
+    }
+  }
+
+  // ---------- ¿quién está en mi Wi-Fi? ----------
+  function ago(ms) {
+    const m = Math.round((Date.now() - ms) / 60000);
+    if (m < 2) return 'ahora';
+    if (m < 60) return `hace ${m} min`;
+    const h = Math.round(m / 60);
+    if (h < 48) return `hace ${h} h`;
+    return `hace ${Math.round(h / 24)} días`;
+  }
+
+  async function netCall(path, extra) {
+    try {
+      const r = await fetch(`${path}?t=${token}${extra || ''}`);
+      if (r.ok) renderNet(await r.json());
+    } catch (e) { $('netSum').textContent = 'No se pudo conectar con la TV'; }
+  }
+
+  function renderNet(data) {
+    const list = $('netList');
+    const on = data.devices.filter(d => d.online);
+    const unk = on.filter(d => !d.known);
+    $('netSum').textContent = data.scan ? `${on.length} conectados` + (unk.length ? ` · ${unk.length} sin identificar` : ' · todos conocidos') : 'Todavía no se revisó la red';
+    $('netWhen').textContent = data.scan ? 'Revisado ' + ago(data.scan) + ' · la TV revisa cada 5 min' : 'Toca «Buscar ahora»';
+    $('netBadge').classList.toggle('on', unk.length > 0);
+    list.innerHTML = '';
+    for (const d of data.devices) {
+      const row = document.createElement('button');
+      row.className = 'dev' + (d.online ? ' on' : '');
+      const st = document.createElement('i'); st.className = 'st';
+      const info = document.createElement('div'); info.className = 'info';
+      const t = document.createElement('div'); t.textContent = d.name || d.vendor;
+      const s = document.createElement('span');
+      s.textContent = [d.name ? d.vendor : null, d.ip, d.online ? 'conectado' : 'visto ' + ago(d.last)].filter(Boolean).join(' · ');
+      info.append(t, s);
+      row.append(st, info);
+      if (!d.known) { const n = document.createElement('span'); n.className = 'new'; n.textContent = 'NUEVO'; row.append(n); }
+      row.onclick = () => {
+        const name = window.prompt(`Nombre para este equipo\n${d.vendor} · ${d.ip}\nMAC ${d.mac}\n\nDéjalo vacío y toca OK para marcarlo como conocido. Escribe «olvidar» para quitarlo de la lista.`, d.name);
+        if (name === null) return;
+        if (name.trim().toLowerCase() === 'olvidar') netCall('/net/forget', '&mac=' + encodeURIComponent(d.mac));
+        else netCall('/net/name', '&mac=' + encodeURIComponent(d.mac) + '&name=' + encodeURIComponent(name));
+      };
+      list.append(row);
+    }
+  }
+
+  $('netScan').onclick = async () => {
+    const b = $('netScan');
+    b.disabled = true; b.textContent = 'Buscando…';
+    await netCall('/net/scan');
+    b.disabled = false; b.textContent = 'Buscar ahora';
+  };
+
+  // ---------- optimizar (el trabajo lo hace optimizar.sh en la TV) ----------
+  async function optCall(q) {
+    const r = await fetch(`/opt?t=${token}&do=${q}`);
+    if (!r.ok) throw new Error(r.status);
+    return (await r.text()).split('\n').filter(l => l.includes('|')).map(l => l.trim().split('|'));
+  }
+
+  async function showOpt(note) {
+    try {
+      const [items, est] = await Promise.all([optCall('lista'), optCall('estado')]);
+      const val = k => (est.find(r => r[0] === k) || [])[1];
+      $('optSum').textContent = note || `${val('RAM')} MB de RAM libres`;
+      $('optWhen').textContent = `${val('LIBRE')} MB de almacenamiento libre`;
+      const list = $('optList');
+      list.innerHTML = '';
+      let mine = 0;
+      for (const [pkg, group, rec, state, what] of items) {
+        if (state === 'desactivada-por-neo') mine++;
+        const active = state === 'activa';
+        const row = document.createElement('button');
+        row.className = 'dev opt' + (active ? (rec === '1' ? ' on' : '') : ' off');
+        row.dataset.pkg = pkg;
+        const box = document.createElement('i'); box.className = 'box';
+        const info = document.createElement('div'); info.className = 'info';
+        const t = document.createElement('div'); t.textContent = what;
+        const s = document.createElement('span');
+        s.textContent = active ? (rec === '1' ? 'Recomendado' : 'Opcional') : 'Ya desactivada';
+        info.append(t, s);
+        row.append(box, info);
+        if (active) row.onclick = () => row.classList.toggle('on');
+        list.append(row);
+      }
+      $('optGo').disabled = !items.some(r => r[3] === 'activa') && !note;
+      $('optUndo').disabled = mine === 0 && !est.some(r => r[0] === 'ANIM');
+    } catch (e) { $('optSum').textContent = 'No se pudo conectar con la TV'; }
+  }
+
+  async function optRun(q, b) {
+    const label = b.textContent;
+    b.disabled = true; b.textContent = 'Trabajando…';
+    try {
+      const rows = await optCall(q);
+      const ok = rows.filter(r => r[0] === 'OK').length;
+      const cache = rows.find(r => r[0] === 'CACHE');
+      const note = q === 'revertir' ? `Listo: reactivé ${ok} apps`
+        : (ok ? `Listo: ${ok} apps desactivadas` : 'Listo') + (cache ? ` · caché +${cache[1]} MB` : '');
+      await showOpt(note);
+    } catch (e) { $('optSum').textContent = 'La TV dejó de responder'; }
+    b.textContent = label; b.disabled = false;
+  }
+
+  $('optGo').onclick = () => {
+    const pkgs = [...document.querySelectorAll('.opt.on')].map(r => r.dataset.pkg);
+    optRun('aplicar&pkgs=' + (pkgs.length ? pkgs.join(',') : 'ninguna'), $('optGo'));
+  };
+  $('optCache').onclick = () => optRun('cache', $('optCache'));
+  $('optUndo').onclick = () => {
+    if (confirm('¿Volver a activar las apps que desactivó NEO y dejar las animaciones como estaban?')) optRun('revertir', $('optUndo'));
+  };
+
+  // ---------- apps ----------
+  function loadApps() {
+    fetch('/apps?t=' + token).then(r => r.json()).then(list => {
+      appsLoaded = list.length > 0;
+      const grid = $('grid');
+      grid.innerHTML = '';
+      if (!list.length) { grid.innerHTML = '<div class="empty">Abre NEO en la TV una vez para cargar las apps.</div>'; return; }
+      for (const a of list) {
+        const b = document.createElement('button');
+        b.className = 'app';
+        const img = document.createElement('img');
+        img.src = '/banner?t=' + token + '&f=' + encodeURIComponent(a.banner);
+        img.alt = '';
+        img.onerror = () => { const ph = document.createElement('span'); ph.className = 'ph'; ph.textContent = a.label; img.replaceWith(ph); };
+        const name = document.createElement('div');
+        name.textContent = a.label;
+        b.append(img, name);
+        b.onclick = () => { b.classList.add('press'); setTimeout(() => b.classList.remove('press'), 150); send('app ' + a.pkg); };
+        grid.append(b);
+      }
+    }).catch(() => {});
+  }
+
+  // ---------- escribir ----------
+  (() => {
+    const input = $('text');
+    let sent = '', timer = null;
+    // Con el teclado de Android abierto en la TV las tildes pasan; en YouTube/Netflix (teclado propio) se quitan.
+    function clean(s) {
+      if (ime) return s.normalize('NFC').replace(/[\u0000-\u001f\u007f\ud800-\udfff̀-ͯ]/g, '');
+      return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\x20-\x7e]/g, '');
+    }
+    function sync() {
+      clearTimeout(timer);
+      const now = clean(input.value);
+      let p = 0;
+      while (p < now.length && p < sent.length && now[p] === sent[p]) p++;
+      const dels = sent.length - p, add = now.slice(p);
+      if (dels > 0) send('d ' + dels);
+      if (add) send('t ' + add);
+      sent = now;
+    }
+    input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(sync, 120); });
+    $('typeBar').addEventListener('submit', e => {
+      e.preventDefault();
+      sync();
+      send('k 66');
+      input.value = ''; sent = '';
+    });
+  })();
+
+  connect();
+})();
+</script>
+</body>
+</html>

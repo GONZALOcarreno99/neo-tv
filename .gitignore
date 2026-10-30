@@ -1,0 +1,8 @@
+build/
+*.apk
+*.idsig
+*.keystore
+*.jks
+# se generan al compilar
+android/*/assets/neokeys.dex
+android/*/assets/optimizar.sh
